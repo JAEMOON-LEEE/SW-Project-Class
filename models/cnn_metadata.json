@@ -1,0 +1,24 @@
+{
+  "input_shape": [
+    128,
+    1249,
+    1
+  ],
+  "class_names": [
+    "blues",
+    "classical",
+    "country",
+    "disco",
+    "hiphop",
+    "jazz",
+    "metal",
+    "pop",
+    "reggae",
+    "rock"
+  ],
+  "normalization_mean": -42.89559046445551,
+  "normalization_std": 15.553609984048673,
+  "test_accuracy": 0.14499999582767487,
+  "random_state": 42,
+  "batch_size": 16
+}
