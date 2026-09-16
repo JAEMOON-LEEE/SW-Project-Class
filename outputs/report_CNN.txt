@@ -1,4 +1,4 @@
-Test Accuracy: 0.6750
+CNN - Test Accuracy: 0.6750
 
               precision    recall  f1-score   support
 

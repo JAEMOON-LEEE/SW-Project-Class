@@ -1,0 +1,18 @@
+Random Forest - Test Accuracy: 0.7150
+
+              precision    recall  f1-score   support
+
+       blues      0.824     0.667     0.737        21
+   classical      0.632     1.000     0.774        12
+     country      0.700     0.583     0.636        24
+       disco      0.714     0.682     0.698        22
+      hiphop      0.733     0.733     0.733        15
+        jazz      0.875     0.778     0.824        27
+       metal      0.750     1.000     0.857        18
+         pop      0.778     0.737     0.757        19
+      reggae      0.667     0.727     0.696        22
+        rock      0.444     0.400     0.421        20
+
+    accuracy                          0.715       200
+   macro avg      0.712     0.731     0.713       200
+weighted avg      0.719     0.715     0.711       200

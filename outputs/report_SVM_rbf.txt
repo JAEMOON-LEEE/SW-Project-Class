@@ -1,0 +1,18 @@
+SVM (rbf) - Test Accuracy: 0.7150
+
+              precision    recall  f1-score   support
+
+       blues      0.714     0.714     0.714        21
+   classical      0.733     0.917     0.815        12
+     country      0.714     0.625     0.667        24
+       disco      0.789     0.682     0.732        22
+      hiphop      0.733     0.733     0.733        15
+        jazz      0.880     0.815     0.846        27
+       metal      0.810     0.944     0.872        18
+         pop      0.714     0.789     0.750        19
+      reggae      0.722     0.591     0.650        22
+        rock      0.375     0.450     0.409        20
+
+    accuracy                          0.715       200
+   macro avg      0.719     0.726     0.719       200
+weighted avg      0.723     0.715     0.716       200

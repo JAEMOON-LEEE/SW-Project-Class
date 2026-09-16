@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GENRE DECK · MusicLens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://www.youtube.com/iframe_api"></script>
+<style>
+  :root {
+    --bg: #DCD3BE;
+    --deck: #241E19;
+    --deck-light: #332A22;
+    --deck-seam: rgba(239,231,216,0.10);
+    --cream: #EFE7D8;
+    --cream-dim: #A79E8D;
+    --amber: #E8A33D;
+    --amber-dim: #8A6A34;
+    --red: #D64B2A;
+    --green: #7CB37A;
+    --shell: #3B2E22;
+    --shell-light: #4A3A2A;
+    --label: #E9DEC4;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.045) 1px, transparent 0);
+    background-size: 4px 4px;
+    color: var(--deck);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+  }
+
+  .page { max-width: 640px; margin: 0 auto; padding: 48px 20px 80px; }
+
+  .masthead { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; padding: 0 4px; }
+  .masthead h1 { font-size: 22px; font-weight: 700; letter-spacing: 0.02em; margin: 0; color: #2A2115; }
+  .masthead .sub { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #6B6250; }
+
+  .deck {
+    background: var(--deck);
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 22px 40px -18px rgba(20,15,10,0.55);
+    position: relative;
+  }
+  .deck::before {
+    content: ""; position: absolute; inset: 8px;
+    border: 1px solid var(--deck-seam); border-radius: 9px; pointer-events: none;
+  }
+
+  .deck-row { display: flex; align-items: center; gap: 10px; padding: 6px 2px 16px; border-bottom: 1px solid var(--deck-seam); margin-bottom: 18px; }
+  .led { width: 9px; height: 9px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px 1px rgba(124,179,122,0.7); flex-shrink: 0; transition: background .3s, box-shadow .3s; }
+  .led.off { background: #4a4038; box-shadow: none; }
+  .deck-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: var(--cream-dim); }
+
+  /* ---- Bay: where the cassette gets inserted ---- */
+  .bay-frame {
+    background: #100D0A;
+    border-radius: 8px;
+    box-shadow: inset 0 4px 12px rgba(0,0,0,0.65), inset 0 0 0 1px rgba(0,0,0,0.4);
+    padding: 10px 10px 0;
+    position: relative;
+  }
+
+  .bay-slot-lip {
+    height: 8px;
+    background: linear-gradient(180deg, #000 0%, #211a14 100%);
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 8px;
+    position: relative;
+  }
+
+  .viewer {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 16px;
+    opacity: 0;
+    transition: opacity .3s ease;
+    pointer-events: none;
+  }
+  .viewer.show { opacity: 1; }
+
+  .mini-reel {
+    width: 20px; height: 20px; border-radius: 50%;
+    border: 2px solid var(--amber-dim);
+    position: relative;
+    animation: spin 1s linear infinite;
+  }
+  .mini-reel::before {
+    content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--amber);
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .bay-window {
+    position: relative;
+    height: 172px;
+    overflow: hidden;
+    border-radius: 0 0 4px 4px;
+  }
+
+  /* ---- Cassette ---- */
+  .cassette {
+    position: absolute;
+    left: 50%;
+    bottom: 6px;
+    transform: translate(-50%, 0) scale(1);
+    width: 280px;
+    height: 158px;
+    background: var(--shell);
+    border-radius: 8px;
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+    padding: 12px;
+    transition: transform .55s cubic-bezier(0.6, -0.1, 0.7, 0);
+  }
+  .cassette.inserted {
+    transform: translate(-50%, -195px) scale(0.92);
+    transition: transform .5s cubic-bezier(0.5, 0, 0.75, 0);
+  }
+  .cassette.ejected {
+    transition: transform .6s cubic-bezier(0.16, 1.4, 0.4, 1);
+  }
+  .cassette.shake { animation: shake .4s ease; }
+  @keyframes shake {
+    0%, 100% { transform: translate(-50%, 0); }
+    25% { transform: translate(-58%, 0); }
+    75% { transform: translate(-42%, 0); }
+  }
+
+  .cassette-top {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 4px 8px;
+  }
+  .hub-window {
+    width: 46px; height: 46px; border-radius: 50%;
+    background: #14100C;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,0.7);
+  }
+  .hub-reel {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: repeating-conic-gradient(var(--shell-light) 0deg 18deg, #14100C 18deg 36deg);
+    border: 2px solid var(--shell-light);
+  }
+  .side-tab {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px; color: var(--cream-dim);
+    letter-spacing: 0.08em;
+  }
+
+  .label-area {
+    background: var(--label);
+    border-radius: 4px;
+    padding: 10px 12px;
+    height: 62px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
+  }
+  .label-eyebrow {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: #8a7a55;
+  }
+  .label-area input {
+    background: transparent;
+    border: none;
+    outline: none;
+    border-bottom: 1px dashed #8a7a55;
+    color: #2A2115;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    padding: 4px 0;
+    width: 100%;
+  }
+  .label-area input::placeholder { color: #a89a72; }
+
+  .cassette-bottom {
+    display: flex; justify-content: space-between; padding: 8px 6px 0;
+  }
+  .foot-hole {
+    width: 8px; height: 8px; border-radius: 50%; background: #14100C;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.8);
+  }
+
+  .yt-audio-holder {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    left: -9999px; top: -9999px;
+  }
+
+  /* ---- Transport (audio playback) ---- */
+  .transport {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    background: #17130F;
+    border: 1px solid rgba(0,0,0,0.5);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .transport.show { display: flex; }
+
+  .transport-btn {
+    flex-shrink: 0;
+    width: 34px; height: 34px;
+    border-radius: 4px;
+    border: 1px solid rgba(239,231,216,0.15);
+    background: var(--deck-light);
+    color: var(--cream);
+    font-size: 13px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: filter .12s ease, transform .12s ease;
+  }
+  .transport-btn:hover { filter: brightness(1.2); }
+  .transport-btn:active { transform: scale(0.94); }
+  .transport-btn.primary { background: var(--amber); color: #1c0d06; border-color: transparent; }
+
+  .now-playing {
+    flex: 1;
+    min-width: 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11.5px;
+    color: var(--cream-dim);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .now-playing .eq {
+    display: inline-flex;
+    gap: 2px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .now-playing .eq span {
+    width: 3px; height: 10px;
+    background: var(--green);
+    display: inline-block;
+    animation: eq 0.8s ease-in-out infinite;
+  }
+  .now-playing .eq span:nth-child(2) { animation-delay: .2s; }
+  .now-playing .eq span:nth-child(3) { animation-delay: .4s; }
+  .now-playing.paused .eq span { animation-play-state: paused; height: 4px; }
+  @keyframes eq {
+    0%, 100% { height: 4px; }
+    50% { height: 12px; }
+  }
+
+  .volume-slider {
+    flex-shrink: 0;
+    width: 70px;
+    accent-color: var(--amber);
+  }
+
+  /* ---- Controls ---- */
+  .tray-controls { display: flex; gap: 8px; margin-top: 16px; }
+  .insert-btn {
+    flex: 1;
+    background: var(--red);
+    color: #1c0d06;
+    border: none;
+    border-radius: 5px;
+    padding: 13px 20px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform 0.12s ease, filter 0.12s ease;
+  }
+  .insert-btn:hover:not(:disabled) { filter: brightness(1.08); }
+  .insert-btn:active:not(:disabled) { transform: scale(0.98); }
+  .insert-btn:disabled { opacity: 0.5; cursor: default; }
+
+  .hint {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; color: #6f6555;
+    margin-top: 9px; padding-left: 2px; min-height: 14px;
+  }
+  .hint.err { color: #E58567; }
+
+  /* ---- Result panel ---- */
+  .result { display: none; margin-top: 6px; }
+  .result.show { display: block; }
+
+  .track-card { display: flex; gap: 14px; padding: 4px 2px 20px; }
+  .art-frame { width: 84px; height: 84px; border-radius: 4px; overflow: hidden; flex-shrink: 0; background: #17130F; border: 1px solid rgba(0,0,0,0.5); }
+  .art-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .track-meta { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+  .track-title { color: var(--cream); font-size: 15px; font-weight: 600; line-height: 1.35; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .track-channel { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--amber); }
+  .track-link { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--cream-dim); text-decoration: none; width: fit-content; border-bottom: 1px solid rgba(167,158,141,0.35); }
+  .track-link:hover { color: var(--cream); border-color: var(--cream); }
+
+  .readout { background: #17130F; border-radius: 6px; border: 1px solid rgba(0,0,0,0.5); padding: 18px 16px 16px; }
+  .readout-label { font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: var(--amber-dim); margin-bottom: 14px; }
+  .genre-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .genre-row:last-of-type { margin-bottom: 0; }
+  .genre-name { width: 92px; flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--cream); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meter { flex: 1; height: 8px; background: rgba(239,231,216,0.08); border-radius: 2px; overflow: hidden; }
+  .meter-fill { height: 100%; background: linear-gradient(90deg, var(--amber-dim), var(--amber)); width: 0%; transition: width 0.9s cubic-bezier(0.16, 1, 0.3, 1); border-radius: 2px; }
+  .genre-row:first-child .meter-fill { background: linear-gradient(90deg, #a8391f, var(--red)); }
+  .genre-pct { width: 38px; flex-shrink: 0; text-align: right; font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--cream-dim); }
+  .reasoning { margin-top: 16px; padding-top: 14px; border-top: 1px solid rgba(239,231,216,0.08); font-size: 13px; line-height: 1.6; color: #C9C0AE; }
+  .disclaimer { margin-top: 18px; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; line-height: 1.6; color: #6f6555; padding: 0 2px; }
+
+  /* ---- Play log ---- */
+  .log-panel {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--deck-seam);
+  }
+  .log-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 0 2px 12px;
+  }
+  .log-title-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--amber-dim);
+  }
+  .log-count {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--cream-dim);
+  }
+  .log-empty {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: #6f6555;
+    padding: 6px 2px 2px;
+  }
+  .log-rows { display: flex; flex-direction: column; gap: 8px; }
+
+  .log-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #17130F;
+    border: 1px solid rgba(0,0,0,0.5);
+    border-radius: 6px;
+    padding: 9px 12px 9px 10px;
+    animation: logIn .4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes logIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-counter {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--amber-dim);
+    flex-shrink: 0;
+    width: 34px;
+  }
+
+  .log-thumb {
+    width: 40px; height: 40px;
+    border-radius: 3px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #0d0a08;
+  }
+  .log-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  .log-meta { min-width: 0; flex: 1; }
+  .log-video-title {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--cream);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .log-sub {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .log-genre-pill {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: #1c0d06;
+    background: var(--amber);
+    padding: 1px 7px;
+    border-radius: 20px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .log-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10.5px;
+    color: var(--cream-dim);
+  }
+  .log-link {
+    flex-shrink: 0;
+    color: var(--cream-dim);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px;
+  }
+  .log-link:hover { color: var(--cream); }
+
+  @media (max-width: 460px) {
+    .log-video-title { font-size: 12px; }
+    .log-counter { width: 28px; font-size: 11px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mini-reel { animation: none; }
+    .cassette { transition: none; }
+    .meter-fill { transition: none; }
+  }
+
+  @media (max-width: 460px) {
+    .cassette { width: 240px; }
+    .genre-name { width: 74px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="masthead">
+    <h1>GENRE DECK</h1>
+    <div class="sub">v2.0 · MusicLens SVM</div>
+  </div>
+
+  <div class="deck">
+    <div class="deck-row">
+      <div class="led off" id="led"></div>
+      <div class="deck-label" id="deckStatus">STANDBY — 테이프를 넣어주세요</div>
+    </div>
+
+    <div class="bay-frame">
+      <div class="bay-slot-lip">
+        <div class="viewer" id="viewer">
+          <div class="mini-reel"></div>
+          <div class="mini-reel"></div>
+        </div>
+      </div>
+      <div class="bay-window">
+        <div class="cassette" id="cassette">
+          <div class="cassette-top">
+            <div class="hub-window"><div class="hub-reel"></div></div>
+            <div class="side-tab">SIDE A</div>
+            <div class="hub-window"><div class="hub-reel"></div></div>
+          </div>
+          <div class="label-area">
+            <div class="label-eyebrow">TRACK</div>
+            <input id="urlInput" type="text" placeholder="유튜브 링크를 여기에 적어주세요" autocomplete="off" />
+          </div>
+          <div class="cassette-bottom">
+            <div class="foot-hole"></div>
+            <div class="foot-hole"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="yt-audio-holder"><div id="ytPlayer"></div></div>
+
+    <div class="tray-controls">
+      <button class="insert-btn" id="insertBtn">테이프 삽입 · 분석</button>
+    </div>
+    <div class="hint" id="hint">watch, youtu.be, shorts 링크를 지원해요 · 분석에 10~20초 정도 걸려요</div>
+
+    <div class="transport" id="transport">
+      <button class="transport-btn primary" id="playPauseBtn">▶</button>
+      <button class="transport-btn" id="stopBtn">■</button>
+      <div class="now-playing paused" id="nowPlaying">재생 준비 중...</div>
+      <input class="volume-slider" id="volumeSlider" type="range" min="0" max="100" value="70">
+    </div>
+
+    <div class="result" id="result">
+      <div class="track-card">
+        <div class="art-frame"><img id="thumb" src="" alt=""></div>
+        <div class="track-meta">
+          <div class="track-title" id="titleText"></div>
+          <div class="track-channel" id="channelText"></div>
+          <a class="track-link" id="watchLink" href="#" target="_blank" rel="noopener">원본 영상 보기 ↗</a>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="readout-label">GENRE READOUT</div>
+        <div id="genreRows"></div>
+        <div class="reasoning" id="reasoningText"></div>
+      </div>
+
+      <div class="disclaimer">
+        MusicLens 팀이 GTZAN 데이터셋으로 학습한 모델이 영상 속 30초 구간의 실제 오디오를 분석한 결과예요. 예측 정확도는 100%가 아니니 참고용으로 봐주세요.
+      </div>
+    </div>
+
+    <div class="log-panel">
+      <div class="log-head">
+        <div class="log-title-label">PLAY LOG</div>
+        <div class="log-count" id="logCount">0곡</div>
+      </div>
+      <div class="log-empty" id="logEmpty">아직 분석한 테이프가 없어요</div>
+      <div class="log-rows" id="logRows"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const urlInput = document.getElementById('urlInput');
+const insertBtn = document.getElementById('insertBtn');
+const hint = document.getElementById('hint');
+const cassette = document.getElementById('cassette');
+const viewer = document.getElementById('viewer');
+const result = document.getElementById('result');
+const led = document.getElementById('led');
+const deckStatus = document.getElementById('deckStatus');
+
+function extractVideoId(raw) {
+  try {
+    const url = new URL(raw.trim());
+    const host = url.hostname.replace('www.', '');
+    if (host === 'youtu.be') return url.pathname.slice(1).split('/')[0] || null;
+    if (host === 'youtube.com' || host === 'm.youtube.com' || host === 'music.youtube.com') {
+      if (url.pathname === '/watch') return url.searchParams.get('v');
+      if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/')[2];
+      if (url.pathname.startsWith('/embed/')) return url.pathname.split('/')[2];
+      if (url.pathname.startsWith('/live/')) return url.pathname.split('/')[2];
+    }
+    return null;
+  } catch { return null; }
+}
+
+function setHint(msg, isErr) {
+  hint.textContent = msg;
+  hint.classList.toggle('err', !!isErr);
+}
+
+function setStatus(text, on) {
+  deckStatus.textContent = text;
+  led.classList.toggle('off', !on);
+}
+
+async function fetchOEmbed(originalUrl) {
+  const endpoint = 'https://www.youtube.com/oembed?url=' + encodeURIComponent(originalUrl) + '&format=json';
+  const res = await fetch(endpoint);
+  if (!res.ok) throw new Error('oembed_failed');
+  return res.json();
+}
+
+// ---- 실제 MusicLens 모델 호출 (Flask /predict) ----
+async function predictGenre(watchUrl) {
+  const res = await fetch('/predict', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: watchUrl })
+  });
+  const data = await res.json();
+  if (!res.ok) {
+    const err = new Error(data.error || 'predict_failed');
+    err.code = 'predict_failed';
+    throw err;
+  }
+  return data;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderResult(oembed, videoId, watchUrl, genreData) {
+  document.getElementById('thumb').src = 'https://img.youtube.com/vi/' + videoId + '/hqdefault.jpg';
+  document.getElementById('titleText').textContent = oembed.title || '제목 없음';
+  document.getElementById('channelText').textContent = oembed.author_name || '';
+  document.getElementById('watchLink').href = watchUrl;
+
+  const rowsWrap = document.getElementById('genreRows');
+  rowsWrap.innerHTML = '';
+  (genreData.genres || []).slice(0, 3).forEach(g => {
+    const row = document.createElement('div');
+    row.className = 'genre-row';
+    row.innerHTML =
+      '<div class="genre-name">' + escapeHtml(g.name) + '</div>' +
+      '<div class="meter"><div class="meter-fill" data-pct="' + g.confidence + '"></div></div>' +
+      '<div class="genre-pct">' + g.confidence + '%</div>';
+    rowsWrap.appendChild(row);
+  });
+
+  document.getElementById('reasoningText').textContent = genreData.reasoning || '';
+
+  result.classList.add('show');
+  requestAnimationFrame(() => {
+    document.querySelectorAll('.meter-fill').forEach(el => { el.style.width = el.dataset.pct + '%'; });
+  });
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ---- Audio-only YouTube playback ---- */
+let ytPlayer = null;
+let ytApiReady = false;
+let pendingVideoId = null;
+let currentTitle = '';
+
+const transport = document.getElementById('transport');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const stopBtn = document.getElementById('stopBtn');
+const nowPlaying = document.getElementById('nowPlaying');
+const volumeSlider = document.getElementById('volumeSlider');
+
+window.onYouTubeIframeAPIReady = function () {
+  ytPlayer = new YT.Player('ytPlayer', {
+    height: '1',
+    width: '1',
+    playerVars: { controls: 0, disablekb: 1, modestbranding: 1, playsinline: 1, fs: 0 },
+    events: {
+      onReady: () => {
+        ytApiReady = true;
+        ytPlayer.setVolume(Number(volumeSlider.value));
+        if (pendingVideoId) {
+          const vid = pendingVideoId;
+          pendingVideoId = null;
+          playAudio(vid, currentTitle);
+        }
+      },
+      onStateChange: onPlayerStateChange,
+      onError: onPlayerError
+    }
+  });
+};
+
+function onPlayerStateChange(e) {
+  if (e.data === YT.PlayerState.PLAYING) {
+    playPauseBtn.textContent = '❚❚';
+    nowPlaying.classList.remove('paused');
+  } else if (e.data === YT.PlayerState.PAUSED || e.data === YT.PlayerState.ENDED) {
+    playPauseBtn.textContent = '▶';
+    nowPlaying.classList.add('paused');
+  }
+}
+
+function onPlayerError() {
+  setHint('이 영상은 소유자가 다른 사이트에서 재생하지 못하도록 막아놨어요. 원본 링크로 들어봐주세요.', true);
+  transport.classList.add('show');
+  nowPlaying.innerHTML = '<span class="eq"><span></span><span></span><span></span></span>재생할 수 없는 영상이에요';
+  nowPlaying.classList.add('paused');
+}
+
+function playAudio(videoId, title) {
+  currentTitle = title || '';
+  if (!ytApiReady || !ytPlayer || !ytPlayer.loadVideoById) {
+    pendingVideoId = videoId;
+    return;
+  }
+  transport.classList.add('show');
+  nowPlaying.innerHTML = '<span class="eq"><span></span><span></span><span></span></span>' + escapeHtml(title || '재생 중');
+  nowPlaying.classList.remove('paused');
+  ytPlayer.loadVideoById(videoId);
+  ytPlayer.setVolume(Number(volumeSlider.value));
+}
+
+playPauseBtn.addEventListener('click', () => {
+  if (!ytPlayer) return;
+  const state = ytPlayer.getPlayerState();
+  if (state === YT.PlayerState.PLAYING) ytPlayer.pauseVideo();
+  else ytPlayer.playVideo();
+});
+
+stopBtn.addEventListener('click', () => {
+  if (!ytPlayer) return;
+  ytPlayer.stopVideo();
+  playPauseBtn.textContent = '▶';
+  nowPlaying.classList.add('paused');
+});
+
+volumeSlider.addEventListener('input', () => {
+  if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(Number(volumeSlider.value));
+});
+
+let logCounter = 0;
+const logRowsEl = document.getElementById('logRows');
+const logEmptyEl = document.getElementById('logEmpty');
+const logCountEl = document.getElementById('logCount');
+
+function addLogEntry(oembed, videoId, watchUrl, genreData) {
+  logCounter += 1;
+  logEmptyEl.style.display = 'none';
+  logCountEl.textContent = logCounter + '곡';
+
+  const top = (genreData.genres || [])[0] || { name: '알 수 없음', confidence: 0 };
+  const row = document.createElement('div');
+  row.className = 'log-row';
+  row.innerHTML =
+    '<div class="log-counter">' + String(logCounter).padStart(4, '0') + '</div>' +
+    '<div class="log-thumb"><img src="https://img.youtube.com/vi/' + videoId + '/default.jpg" alt=""></div>' +
+    '<div class="log-meta">' +
+      '<div class="log-video-title">' + escapeHtml(oembed.title || '제목 없음') + '</div>' +
+      '<div class="log-sub">' +
+        '<span class="log-genre-pill">' + escapeHtml(top.name) + '</span>' +
+        '<span class="log-pct">' + top.confidence + '%</span>' +
+      '</div>' +
+    '</div>' +
+    '<a class="log-link" href="' + watchUrl + '" target="_blank" rel="noopener">↗</a>';
+
+  logRowsEl.prepend(row);
+}
+
+async function runAnalysis() {
+  if (insertBtn.disabled) return;
+  const raw = urlInput.value;
+  if (!raw.trim()) { setHint('링크를 먼저 적어주세요', true); return; }
+
+  const videoId = extractVideoId(raw);
+  if (!videoId) {
+    setHint('유효한 유튜브 링크가 아니에요. watch, youtu.be, shorts 형식을 확인해주세요.', true);
+    cassette.classList.remove('shake'); void cassette.offsetWidth; cassette.classList.add('shake');
+    return;
+  }
+
+  setHint('watch, youtu.be, shorts 링크를 지원해요 · 분석에 10~20초 정도 걸려요', false);
+  result.classList.remove('show');
+  insertBtn.disabled = true;
+  insertBtn.textContent = '분석 중...';
+
+  cassette.classList.remove('ejected');
+  cassette.classList.add('inserted');
+  setStatus('LOADING TAPE', true);
+
+  const watchUrl = 'https://www.youtube.com/watch?v=' + videoId;
+
+  await wait(520);
+  viewer.classList.add('show');
+  setStatus('DOWNLOADING AUDIO', true);
+
+  try {
+    const oembed = await fetchOEmbed(watchUrl);
+    playAudio(videoId, oembed.title);
+    setStatus('EXTRACTING FEATURES', true);
+
+    // 실제 오디오 다운로드 + librosa 특징 추출 + SVM 예측 (서버에서 처리, 10~20초 소요)
+    const genreData = await predictGenre(watchUrl);
+
+    viewer.classList.remove('show');
+    cassette.classList.remove('inserted');
+    cassette.classList.add('ejected');
+    setStatus('PLAYBACK', true);
+    insertBtn.disabled = false;
+    insertBtn.textContent = '테이프 삽입 · 분석';
+
+    await wait(150);
+    renderResult(oembed, videoId, watchUrl, genreData);
+    addLogEntry(oembed, videoId, watchUrl, genreData);
+  } catch (e) {
+    viewer.classList.remove('show');
+    cassette.classList.remove('inserted');
+    cassette.classList.add('ejected');
+    setStatus('STOPPED', false);
+    insertBtn.disabled = false;
+    insertBtn.textContent = '테이프 삽입 · 분석';
+
+    if (e.message === 'oembed_failed') {
+      setHint('이 영상 정보를 가져올 수 없어요. 비공개·삭제된 영상이거나 잘못된 링크일 수 있어요.', true);
+    } else if (e.code === 'predict_failed') {
+      setHint('장르 분석 실패: ' + e.message, true);
+    } else {
+      setHint('장르 분석에 실패했어요. 잠시 후 다시 시도해주세요.', true);
+    }
+  }
+}
+
+insertBtn.addEventListener('click', runAnalysis);
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') runAnalysis(); });
+</script>
+</body>
+</html>

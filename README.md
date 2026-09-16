@@ -1,178 +1,194 @@
 # MusicLens
 
-GTZAN 음악 장르 데이터로 **오디오에서 특징을 뽑고, 장르를 분류**하는 팀 프로젝트입니다.
+유튜브 노래 링크를 넣으면, **그 곡이 어떤 장르인지** 알려주는 프로젝트입니다.
 
-처음 보는 사람은 이 순서만 기억하면 됩니다.
+예를 들어 블루스 기타 연주 영상을 넣으면  
+`blues 72% / rock 18% / jazz 10%` 처럼 **가능성이 높은 장르 3개**를 보여줍니다.
 
-1. 음원 파일을 받아서 깨진 곡을 걸러낸다. (Day 1)
-2. 각 곡을 숫자 벡터(특징)로 바꾼다. (Day 2)
-3. 그 숫자가 괜찮은지 통계로 확인한다. (Day 3)
-4. 앞으로 그 숫자로 장르 분류 모델을 학습한다. (예정)
-
-저장소: https://github.com/JAEMOON-LEEE/SW-Project-Class
-
-역할:
-
-- **이재문:** MFCC, 스펙트럴 센트로이드/롤오프, 제로크로싱율
-- **김승현:** 템포(BPM), 리듬, 크로마
+수업 과목: SW프로젝트응용  
+팀: 이재문, 김승현
 
 ---
 
-## 데이터셋 (GTZAN)
+## 한 줄로 이해하기
 
-장르 10개 × 각 100곡 = 원래 1000곡입니다.
+사람은 노래를 듣고 “이건 재즈 같네”라고 느낍니다.  
+컴퓨터는 귀가 없으니, 소리를 **숫자로 바꾼 뒤** 그 숫자 패턴을 보고 장르를 고릅니다.
 
-blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, rock
+MusicLens는 그 과정을 웹페이지로 만든 것입니다.
 
-Kaggle에서 받습니다 (약 1.2GB):
+```
+유튜브 링크
+    → 소리만 내려받기
+    → 소리에서 숫자(특징) 뽑기
+    → 학습해 둔 모델이 장르 추측
+    → 화면에 상위 3개 장르 표시
+```
 
-https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification
+---
 
-압축을 풀면 나오는 `genres_original` 폴더를 프로젝트의 `data/` 안에 그대로 넣습니다.
+## 무엇을 배우게 했나
+
+컴퓨터에게 장르를 가르치려면 **정답이 적힌 노래**가 필요합니다.
+
+우리는 [GTZAN](https://www.kaggle.com/datasets/andradaolteanu/gtzan-dataset-music-genre-classification) 데이터셋을 썼습니다.
+
+- 장르 10개: blues, classical, country, disco, hiphop, jazz, metal, pop, reggae, rock
+- 각 장르 약 100곡, 곡당 약 30초
+- 그중 깨진 파일 `jazz.00054.wav` 1개는 빼고 학습했습니다
+
+이 노래들로 “이런 소리면 이 장르”를 익힌 뒤,  
+**처음 보는 유튜브 곡**에도 같은 방식으로 장르를 붙여 봅니다.
+
+---
+
+## 웹앱이 하는 일 (사용자 기준)
+
+1. 브라우저에서 카세트 모양 화면이 열립니다.
+2. 유튜브 주소를 붙여넣고 분석을 누릅니다.
+3. 영상 제목·썸네일은 미리보기용입니다. 장르 판단에는 쓰지 않습니다.
+4. 서버가 실제 소리를 받아 **중간 30초**만 듣고 판단합니다.
+5. 가장 비슷한 장르 3개와 확신 정도(%)를 보여줍니다.
+
+> 왜 30초만 듣나요?  
+> 학습에 쓴 노래가 원래 30초짜리이고, 영상 전체를 받으면 너무 오래 걸리기 때문입니다.  
+> 그래서 **인트로·광고를 건너뛴 뒤의 30초**를 사용합니다. 곡 전체의 분위기와 다를 수는 있습니다.
+
+---
+
+## 컴퓨터는 소리를 어떻게 숫자로 바꾸나
+
+어려운 용어를 일상 말로 바꾸면 이렇습니다.
+
+| 우리가 뽑은 값 | 쉬운 설명 |
+|---|---|
+| MFCC | 목소리·악기가 “어떤 음색인지”를 숫자로 요약한 것 |
+| 스펙트럴 특징 | 소리가 높은음 위주인지, 낮은음 위주인지 |
+| 템포 | 박자가 빠른지 느린지 (BPM에 가까운 값) |
+| 크로마 | 어떤 음정(도레미…)이 많이 나오는지 |
+
+한 곡을 이 값들로 요약하면 **숫자 77개**가 됩니다.  
+모델은 이 77개 숫자를 보고 10개 장르 중 하나를 고릅니다.
+
+---
+
+## 어떤 모델을 골랐나
+
+같은 시험 문제(안 보여 준 노래 200곡)로 여러 방법을 비교했습니다.
+
+| 방법 | 맞춘 비율 | 한 줄 설명 |
+|---|---|---|
+| **SVM (linear)** | **74%** | 숫자 77개를 보고 경계를 긋는 방법. **최종 채택** |
+| SVM (rbf) | 71.5% | 경계를 더 구불구불하게 긋는 변형 |
+| Random Forest | 71.5% | 작은 결정나무 여러 개의 투표 |
+| CNN | 67.5% | 소리를 그림(멜스펙트로그램)처럼 보고 학습 |
+
+10개 장르를 **아무거나 찍으면 약 10%**이므로, 74%는 “꽤 맞히지만 완벽하지는 않다” 수준입니다.  
+록과 블루스처럼 비슷한 장르는 서로 헷갈리기 쉽습니다.
+
+웹앱은 이 최종 모델(SVM linear)을 사용합니다.
+
+---
+
+## 폴더 안내
 
 ```
 MusicLens_Day1_starter/
-├── data/
-│   └── genres_original/
-│       ├── blues/
-│       ├── classical/
-│       └── ...
-├── scripts/
-├── outputs/
-├── requirements.txt
-└── README.md
+├── app.py                 웹앱 서버
+├── templates/index.html   화면 (카세트 UI)
+├── README.md              지금 보고 있는 설명서
+├── README_WEBAPP.md       웹앱 설치·실행 상세 가이드
+├── requirements.txt       필요한 파이썬 패키지 목록
+├── scripts/               데이터 검사, 학습, 비교 코드
+├── models/                학습이 끝난 모델 파일
+├── outputs/               그래프, 성적표, 분석 결과
+└── data/                  원본 노래(용량 커서 GitHub에는 안 올림)
 ```
 
-음원(`.wav`)은 용량이 커서 Git에 올리지 않습니다. 각자 위 주소에서 받아 `data/genres_original/`에 두면 됩니다.
-
-잘 알려진 손상 파일: `jazz.00054.wav`  
-검사 결과 jazz만 99곡이고, 나머지 장르는 100곡입니다. **전체 999곡**을 사용합니다.
+원본 wav는 GitHub에 올리지 않습니다.  
+쓰려면 Kaggle에서 받아 `data/genres_original/` 아래에 장르 폴더를 두면 됩니다.
 
 ---
 
-## 지금까지 한 일
+## 우리가 한 일 (일정)
 
-### Day 1 — 환경, 데이터, EDA (완료)
-
-가상환경과 라이브러리(`librosa`, `pandas`, `scikit-learn` 등)를 맞추고 GTZAN을 받았습니다.
-
-- `scripts/check_corrupted.py`  
-  wav를 열어보고 손상 파일을 `outputs/corrupted_files.txt`에 저장합니다.
-- `scripts/eda_visualize.py`  
-  장르마다 샘플 1곡의 파형과 멜 스펙트로그램을 그립니다.  
-  결과는 `outputs/eda_overview.png`입니다.  
-  손상 파일 목록이 있으면 그 곡은 자동으로 건너뜁니다.
-
-### Day 2 — 특징 추출 (완료)
-
-곡 하나당 **고정 길이 특징 벡터 1행**을 만듭니다.  
-프레임 길이가 곡마다 달라서, 각 특징의 **평균(mean) + 표준편차(std)** 로 요약합니다.
-
-추출하는 것:
-
-| 담당 | 특징 |
+| 단계 | 무엇을 했나 |
 |---|---|
-| 이재문 | MFCC 20차, 스펙트럴 센트로이드/롤오프/대역폭, 제로크로싱율 |
-| 김승현 | 템포, onset(리듬 강도), 크로마 12음 |
-
-- `scripts/extract_features.py`
-- 결과: `outputs/features.csv` (999행, 손상 곡 제외)
-- 이미 뽑힌 `track_id`는 다시 계산하지 않습니다. (이어서 실행 가능)
-- `track_id`와 `genre`를 같이 저장해 두었습니다. 나중에 학습/평가를 **곡 단위**로 나누려고 합니다. 프레임을 섞으면 같은 곡이 train과 test에 들어가 점수가 부풀 수 있습니다.
-
-프로젝트 **루트 폴더**에서 실행해야 합니다.
-
-```bash
-python scripts/extract_features.py
-```
-
-### Day 3 — 특징 검증, 기술통계, 이상치 (완료)
-
-뽑은 표가 비었는지, 장르별로 몇 곡인지, 값이 얼마나 퍼져 있는지 확인합니다.
-
-- `scripts/analyze_features.py`
-- `outputs/feature_summary.csv` — 특징별 평균, 표준편차, 최소/최대 등
-- `outputs/outlier_report.csv` — IQR(1.5배) 기준 이상치 개수
-- `outputs/mfcc_boxplot_by_genre.png` — 장르별 MFCC 분포
-
-실행 결과 요약:
-
-- 결측치 없음
-- jazz 99곡, 나머지 100곡
-- 이상치가 많았던 쪽은 주로 **std(곡 안에서의 변화량)**  
-  예: `zero_crossing_rate_std`, 고차 `mfcc_*_std`, `chroma_*_std`
-- `tempo` 같은 일부 특징은 IQR 이상치 0개
-
-이상치는 “당장 지워야 할 잘못된 파일”이 아닙니다.  
-힙합과 클래식처럼 장르 자체가 소리가 달라서, 전체 999곡 기준으로는 바깥값이 나올 수 있습니다.
-
-```bash
-python scripts/analyze_features.py
-```
+| 1일차 | 환경 만들기, 데이터 받기, 깨진 파일 찾기, 장르별 파형 그려 보기 |
+| 2일차 | 소리를 숫자로 바꾸는 함수 작성 (이재문: 음색·주파수 / 김승현: 박자·음정) |
+| 3일차 | 숫자 테이블 통계·이상치 확인 |
+| 4일차 | SVM, 랜덤포레스트로 첫 모델 학습 |
+| 5일차 | 소리를 그림처럼 만든 멜스펙트로그램 준비 |
+| 6일차 | CNN 학습 (그림으로 장르 맞히기) |
+| 7일차 | 네 모델을 같은 조건으로 비교하고 최종 모델 선정 |
+| 8일차 | 유튜브 링크를 넣는 웹앱 연결 |
 
 ---
 
-## 앞으로 할 일
+## 웹앱만 실행해 보기
 
-1. **곡 단위 train/test 분할**  
-   `track_id` 기준으로 나눕니다. 같은 곡의 정보가 양쪽에 들어가지 않게 합니다.
-2. **분류 모델 학습**  
-   `features.csv`의 숫자로 10개 장르를 맞춥니다. (예: scikit-learn)
-3. **평가와 해석**  
-   정확도뿐 아니라 어떤 장르를 헷갈리는지, 어떤 특징이 유용한지 봅니다.
-4. **문서/발표 정리**  
-   실험 설정, 한계(손상 파일, IQR 이상치의 의미 등)를 적습니다.
+자세한 설치는 [README_WEBAPP.md](README_WEBAPP.md)에 있습니다. 요약만 적습니다.
 
----
+필요한 것:
 
-## 처음 실행하는 사람
+- Python (이 팀은 conda 환경 `nlp` 사용)
+- ffmpeg (유튜브 소리를 wav로 바꿀 때 필요)
+- yt-dlp (유튜브 다운로드)
 
-Windows 기준입니다. 프로젝트 폴더로 이동한 뒤:
+프로젝트 폴더에서:
 
-```bash
-python -m venv venv
-venv\Scripts\activate
+```powershell
+conda activate nlp
 pip install -r requirements.txt
+
+$env:YTDLP_PATH = "C:\Users\사용자명\anaconda3\envs\ytdlp\Scripts\yt-dlp.exe"
+$env:FFMPEG_LOCATION = "C:\ffmpeg\bin"
+python app.py
 ```
 
-macOS / Linux는 `source venv/bin/activate`를 씁니다.
+브라우저에서 http://127.0.0.1:5000 을 엽니다.
 
-그다음 GTZAN을 `data/genres_original/`에 넣고, **항상 프로젝트 루트**에서 아래 순서로 실행합니다.
+참고:
 
-```bash
+- 이 팀의 학습 환경은 Python 3.8이라, 최신 yt-dlp는 별도 환경(`ytdlp`, Python 3.11)에 설치했습니다.
+- 비공개·지역 제한 영상은 다운로드가 실패할 수 있습니다.
+
+---
+
+## 처음부터 다시 학습하려면
+
+원본 데이터가 `data/genres_original/`에 있어야 합니다. 프로젝트 루트에서 순서대로:
+
+```powershell
 python scripts/check_corrupted.py
 python scripts/eda_visualize.py
-python scripts/extract_features.py      # 전체 곡이면 시간이 꽤 걸림
+python scripts/extract_features.py
 python scripts/analyze_features.py
+python scripts/train_baseline.py
+python scripts/generate_melspec.py
+python scripts/train_cnn.py
+python scripts/compare_models.py
+python scripts/finalize_svm_linear.py
 ```
 
-`extract_features.py` / `analyze_features.py`는 경로가 `data/`, `outputs/`처럼 **현재 폴더 기준**입니다. `scripts` 폴더 안에서 실행하면 파일을 못 찾습니다.
+웹앱이 쓰는 파일이 최종 모델과 같은지 확인:
+
+```powershell
+python scripts/check_model_identity.py
+```
 
 ---
 
-## 스크립트와 산출물
+## 한계 (솔직히)
 
-| 파일 | 하는 일 |
-|---|---|
-| `scripts/check_corrupted.py` | 손상 wav 찾기 |
-| `scripts/eda_visualize.py` | 장르별 파형/스펙트로그램 |
-| `scripts/extract_features.py` | 곡 → 특징 표 |
-| `scripts/analyze_features.py` | 통계·이상치·박스플롯 |
-
-| 산출물 | 설명 |
-|---|---|
-| `outputs/corrupted_files.txt` | 손상 파일 경로 |
-| `outputs/eda_overview.png` | Day 1 시각화 |
-| `outputs/features.csv` | Day 2 특징 표 (로컬 생성, Git 제외) |
-| `outputs/feature_summary.csv` | Day 3 기술통계 (로컬 생성, Git 제외) |
-| `outputs/outlier_report.csv` | Day 3 이상치 리포트 (로컬 생성, Git 제외) |
-| `outputs/mfcc_boxplot_by_genre.png` | 장르별 MFCC 박스플롯 |
-
-`.gitignore` 때문에 `*.csv`와 `data/genres_original/`은 커밋되지 않습니다.  
-팀원이 코드를 받은 뒤에는 음원을 넣고 `extract_features.py`를 한 번 돌리면 `features.csv`가 다시 만들어집니다.
+- **유튜브 곡 전체가 아니라 30초**만 듣습니다.
+- 학습 데이터는 오래된 서양 장르 중심이라, 최신 K-pop·OST·믹스장르는 약할 수 있습니다.
+- 74%는 과제용 시작점이지, 상용 음악앱 수준은 아닙니다.
+- CNN이 항상 더 좋은 것은 아니었습니다. 데이터가 작을 때는 단순한 모델이 더 나았습니다.
 
 ---
 
-## 의존성
+## 라이선스·데이터
 
-`requirements.txt`에 있습니다. 핵심은 librosa, numpy, pandas, matplotlib, seaborn, scikit-learn, soundfile, tqdm 입니다.
+코드는 수업 과제용입니다.  
+GTZAN 데이터와 유튜브 음원은 각 저작권 조건을 따릅니다. 개인적인 실험 외에 음원을 재배포하지 마세요.

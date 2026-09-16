@@ -1,8 +1,12 @@
-librosa==0.10.2
+flask
+yt-dlp
+librosa
 numpy
 pandas
 matplotlib
 seaborn
 scikit-learn
+joblib
 soundfile
 tqdm
+tensorflow

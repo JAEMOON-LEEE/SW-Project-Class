@@ -4,3 +4,4 @@ __pycache__/
 data/genres_original/
 *.csv
 .ipynb_checkpoints/
+outputs/melspecs/

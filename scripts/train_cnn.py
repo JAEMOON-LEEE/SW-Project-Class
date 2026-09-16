@@ -50,9 +50,14 @@ RANDOM_STATE = 42           # Day4 SVM/RF와 동일 -> Day7에서 공정 비교�
 TEST_SIZE = 0.20            # 곡 단위 20% -> 약 200곡
 VAL_SIZE_OF_TRAIN = 0.15    # train 중 15%를 validation으로 다시 분리
 
-BATCH_SIZE = 16             # Day5에서 배치 shape 검증한 값과 동일
+BATCH_SIZE = 32              # 16 -> 32: 배치가 너무 작으면 BatchNorm 통계가 불안정해짐
 EPOCHS = 50                 # EarlyStopping이 있어서 대부분 이 전에 멈춤
 MELSPEC_SHAPE = (128, 1249)  # (n_mels, time_frames) - Day5 생성 결과와 동일해야 함
+
+# --- 과적합 방지용 추가 설정 (Day6 1차 학습에서 과적합 확인 후 추가) ---
+BN_MOMENTUM = 0.9            # 0.99 -> 0.9: 작은 데이터셋/배치에서 BN 이동평균이 너무 느리게 갱신되는 문제 완화
+SPATIAL_DROPOUT_RATE = 0.2   # conv 블록마다 채널 단위로 드롭아웃 -> feature map 간 과도한 동조 방지
+L2_REG = 1e-4                # conv/dense 가중치에 L2 정규화 -> 가중치가 너무 커지는 것 방지
 
 MODEL_DIR = "models"
 OUTPUT_DIR = "outputs"
@@ -181,12 +186,16 @@ def build_model(num_classes):
 
     x = inputs
     for filters in [16, 32, 64, 64]:
-        x = layers.Conv2D(filters, (3, 3), padding="same", activation="relu")(x)
-        x = layers.BatchNormalization()(x)
+        x = layers.Conv2D(
+            filters, (3, 3), padding="same", activation="relu",
+            kernel_regularizer=keras.regularizers.l2(L2_REG),
+        )(x)
+        x = layers.BatchNormalization(momentum=BN_MOMENTUM)(x)
         x = layers.MaxPooling2D((2, 2))(x)
+        x = layers.SpatialDropout2D(SPATIAL_DROPOUT_RATE)(x)  # 채널 단위 드롭아웃 (과적합 방지)
 
     x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Dense(128, activation="relu")(x)
+    x = layers.Dense(128, activation="relu", kernel_regularizer=keras.regularizers.l2(L2_REG))(x)
     x = layers.Dropout(0.4)(x)  # 과적합 방지: 학습 중 일부 뉴런 랜덤하게 끄기
     outputs = layers.Dense(num_classes, activation="softmax")(x)
 
@@ -337,6 +346,9 @@ def main():
         "test_accuracy": float(test_acc),
         "random_state": RANDOM_STATE,
         "batch_size": BATCH_SIZE,
+        "bn_momentum": BN_MOMENTUM,
+        "spatial_dropout_rate": SPATIAL_DROPOUT_RATE,
+        "l2_reg": L2_REG,
     }
     with open(os.path.join(MODEL_DIR, "cnn_metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metadata, f, ensure_ascii=False, indent=2)

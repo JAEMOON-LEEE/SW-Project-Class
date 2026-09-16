@@ -18,7 +18,10 @@
   ],
   "normalization_mean": -42.89559046445551,
   "normalization_std": 15.553609984048673,
-  "test_accuracy": 0.14499999582767487,
+  "test_accuracy": 0.675000011920929,
   "random_state": 42,
-  "batch_size": 16
+  "batch_size": 32,
+  "bn_momentum": 0.9,
+  "spatial_dropout_rate": 0.2,
+  "l2_reg": 0.0001
 }
